@@ -29,6 +29,7 @@ LIBS:opto
 LIBS:atmel
 LIBS:contrib
 LIBS:valves
+LIBS:thermocouple-cache
 EELAYER 25 0
 EELAYER END
 $Descr A4 11693 8268
@@ -194,7 +195,7 @@ U 1 1 55BA042C
 P 10950 3200
 F 0 "J101" H 10950 3050 60  0000 C CNN
 F 1 "THERM" H 10950 3350 60  0000 C CNN
-F 2 "kicad-libraries:AKL_5_2" H 10950 3200 60  0001 C CNN
+F 2 "kicad-libraries:PCC_SMP" H 10950 3200 60  0001 C CNN
 F 3 "" H 10950 3200 60  0000 C CNN
 	1    10950 3200
 	1    0    0    1   
