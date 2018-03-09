@@ -25,61 +25,48 @@
 
 #include "configs/config_max31856.h"
 #include "bricklib2/logging/logging.h"
-#include "bricklib2/hal/system_timer/system_timer.h"
 
 #include "xmc_gpio.h"
 #include "xmc_usic.h"
 #include "xmc_spi.h"
-
 #include "max31856.h"
+
+/*
+ * Default CR0 value (144):
+ *
+ * BIT-7     BIT-6     BIT-5     BIT-4   BIT-3     BIT-2     BIT-1     BIT-0
+ * ========  ========  ================  ========  ========  ========  ========
+ * CMODE     1SHOT     OCFAULT           CJ        FAULT     FLTCLEAR  FILTER
+ * 1         0         0          1      0         0         0         0
+ *
+ * Default CR1 value (35):
+ *
+ * BIT-7     BIT-6     BIT-5     BIT-4     BIT-3     BIT-2     BIT-1     BIT-0
+ * ========  ============================  ======================================
+ * RESERVED  AVGSEL                        TC TYPE
+ * 0         0         1         0         0         0         1         1
+ *
+ */
+#define DEFAULT_CR0_VALUE 144
+#define DEFAULT_CR1_VALUE 35
 
 MAX31856_t max31856 = {
   .temperature = 0,
+  .config_reg_cr0 = DEFAULT_CR0_VALUE,
+  .config_reg_cr1 = DEFAULT_CR1_VALUE,
   .config_averaging = MAX31856_CONFIG_AVERAGING_4,
   .config_thermocouple_type = MAX31856_CONFIG_TYPE_K,
   .config_filter = MAX31856_CONFIG_FILTER_60HZ,
   .error_state_changed = false,
   .error_state_over_current = false,
-  .error_state_open_circuit = false
+  .error_state_open_circuit = false,
+  .rx = {0, 0, 0, 0},
+  .tx = {0, 0, 0, 0},
+  .index = 0
 };
 
-#define max31856_rx_irq_handler GET_IRQ_HANDLER(MAX31856_IRQ_RX) /*IRQ_Hdlr_11*/
-#define max31856_tx_irq_handler GET_IRQ_HANDLER(MAX31856_IRQ_TX) /*IRQ_Hdlr_12*/
-
-void __attribute__((optimize("-O3"))) max31856_rx_irq_handler(void) {
-	/*
-  while(!XMC_USIC_CH_RXFIFO_IsEmpty(MAX31856_USIC)) {
-		rfm69.data_spi[rfm69.data_read_index] = MAX31856_USIC->OUTR;
-		rfm69.data_read_index++;
-	}
-  */
-}
-
-void __attribute__((optimize("-O3"))) max31856_tx_irq_handler(void) {
-  /*
-	while(!XMC_USIC_CH_TXFIFO_IsFull(MAX31856_USIC)) {
-		MAX31856_USIC->IN[0] = rfm69.data_spi[rfm69.data_write_index];
-		rfm69.data_write_index++;
-		if(rfm69.data_write_index >= rfm69.data_length) {
-			XMC_USIC_CH_TXFIFO_DisableEvent(MAX31856_USIC, XMC_USIC_CH_TXFIFO_EVENT_CONF_STANDARD);
-			return;
-		}
-	}
-  */
-}
-
 void max31856_init() {
-  logd("[+] max31856_init()\n\r");
-
-  /*
-  max31856.temperature = 0;
-  max31856.config_averaging = MAX31856_CONFIG_AVERAGING_4;
-  max31856.config_thermocouple_type = MAX31856_CONFIG_TYPE_K;
-  max31856.config_filter = MAX31856_CONFIG_FILTER_60HZ;
-  max31856.error_state_changed = false;
-  max31856.error_state_over_current = false;
-  max31856.error_state_open_circuit = false;
-  */
+  logd("[+] Thermocouple V2 Bricklet : max31856_init()\n\r");
 
   // Initialize SPI interface to MAX31856.
 
@@ -97,7 +84,7 @@ void max31856_init() {
     .output_level     = XMC_GPIO_OUTPUT_LEVEL_HIGH
   };
 
-  //MISO pin configuration.
+  // MISO pin configuration.
   const XMC_GPIO_CONFIG_t miso_pin_config = {
     .mode             = XMC_GPIO_MODE_INPUT_TRISTATE,
     .input_hysteresis = XMC_GPIO_INPUT_HYSTERESIS_STANDARD
@@ -115,124 +102,87 @@ void max31856_init() {
     .output_level     = XMC_GPIO_OUTPUT_LEVEL_HIGH
   };
 
-  // Configure MISO pin.
-  XMC_GPIO_Init(MAX31856_MOSI_PIN, &miso_pin_config);
-
   // Initialize USIC channel in SPI master mode.
   XMC_SPI_CH_Init(MAX31856_USIC, &channel_config);
-  MAX31856_USIC->SCTR &= ~USIC_CH_SCTR_PDL_Msk; // Set passive data level to 0.
-  MAX31856_USIC->PCR_SSCMode &= ~USIC_CH_PCR_SSCMode_TIWEN_Msk; // Disable time between bytes.
 
+  // Apply pin configuration.
+  XMC_GPIO_Init(MAX31856_SELECT_PIN, &select_pin_config);
+  XMC_GPIO_Init(MAX31856_SCLK_PIN, &sclk_pin_config);
+  XMC_GPIO_Init(MAX31856_MOSI_PIN, &mosi_pin_config);
+  XMC_GPIO_Init(MAX31856_MISO_PIN, &miso_pin_config);
+
+  // MSB first.
   XMC_SPI_CH_SetBitOrderMsbFirst(MAX31856_USIC);
+  // Set word length.
   XMC_SPI_CH_SetWordLength(MAX31856_USIC, (uint8_t)8U);
-  XMC_SPI_CH_SetFrameLength(MAX31856_USIC, (uint8_t)64U); // Slave must be deselected to end the frame. Won't automatically end the frame.
-
-  XMC_SPI_CH_SetTransmitMode(MAX31856_USIC, XMC_SPI_CH_MODE_STANDARD_HALFDUPLEX /*XMC_SPI_CH_MODE_STANDARD*/);
-
-  // Configure the clock polarity and clock delay.
-  XMC_SPI_CH_ConfigureShiftClockOutput(MAX31856_USIC,
-                                       XMC_SPI_CH_BRG_SHIFT_CLOCK_PASSIVE_LEVEL_1_DELAY_DISABLED,
-                                       XMC_SPI_CH_BRG_SHIFT_CLOCK_OUTPUT_SCLK);
-  // Configure Leading/Trailing delay.
-  XMC_SPI_CH_SetSlaveSelectDelay(MAX31856_USIC, 2);
-
+  // Full-Duplex.
+  XMC_SPI_CH_SetTransmitMode(MAX31856_USIC, XMC_SPI_CH_MODE_STANDARD);
   // Set input source path.
-  XMC_SPI_CH_SetInputSource(MAX31856_USIC, MAX31856_MISO_INPUT, MAX31856_MISO_SOURCE);
+  XMC_SPI_CH_SetInputSource(MAX31856_USIC,
+                            MAX31856_MISO_INPUT,
+                            MAX31856_MISO_SOURCE);
 
-  // SPI Mode: CPOL=1 and CPHA=1.
-  MAX31856_USIC_CHANNEL->DX1CR |= USIC_CH_DX1CR_DPOL_Msk;
-
-  // Configure transmit FIFO.
-  XMC_USIC_CH_TXFIFO_Configure(MAX31856_USIC, 48, XMC_USIC_CH_FIFO_SIZE_16WORDS, 8);
-
-  // Configure receive FIFO.
-  XMC_USIC_CH_RXFIFO_Configure(MAX31856_USIC, 32, XMC_USIC_CH_FIFO_SIZE_16WORDS, 8);
-
-  // Set service request for TX FIFO transmit interrupt.
-  XMC_USIC_CH_TXFIFO_SetInterruptNodePointer(MAX31856_USIC,
-                                             XMC_USIC_CH_TXFIFO_INTERRUPT_NODE_POINTER_STANDARD,
-                                             MAX31856_SERVICE_REQUEST_TX);  // IRQ MAX31856_IRQ_TX.
-
-  // Set service request for RX FIFO receive interrupt.
-  XMC_USIC_CH_RXFIFO_SetInterruptNodePointer(MAX31856_USIC,
-                                             XMC_USIC_CH_RXFIFO_INTERRUPT_NODE_POINTER_STANDARD,
-                                             MAX31856_SERVICE_REQUEST_RX);  // IRQ MAX31856_IRQ_RX.
-
-  XMC_USIC_CH_RXFIFO_SetInterruptNodePointer(MAX31856_USIC,
-                                             XMC_USIC_CH_RXFIFO_INTERRUPT_NODE_POINTER_ALTERNATE,
-                                             MAX31856_SERVICE_REQUEST_RX); // IRQ MAX31856_IRQ_RX.
-
-  //Set priority and enable NVIC node for transmit interrupt
-  NVIC_SetPriority((IRQn_Type)MAX31856_IRQ_TX, MAX31856_IRQ_TX_PRIORITY);
-  NVIC_EnableIRQ((IRQn_Type)MAX31856_IRQ_TX);
-
-  // Set priority and enable NVIC node for receive interrupt
-  NVIC_SetPriority((IRQn_Type)MAX31856_IRQ_RX, MAX31856_IRQ_RX_PRIORITY);
-  NVIC_EnableIRQ((IRQn_Type)MAX31856_IRQ_RX);
-
-  // Start SPI
+  // Start SPI.
   XMC_SPI_CH_Start(MAX31856_USIC);
 
-  // Configure SCLK pin
-  XMC_GPIO_Init(MAX31856_SCLK_PIN, &sclk_pin_config);
+  // Do initial configuration of MAX31856.
 
-  // Configure slave select pin
-  XMC_GPIO_Init(MAX31856_SELECT_PIN, &select_pin_config);
+  // Write to fault mask register.
+  max31856.tx[0] = 254; // Value to be written to the register.
+  max31856_spi_write_register(MAX31856_REG_MASK, 1);
 
-  // Configure MOSI pin
-  XMC_GPIO_Init(MAX31856_MOSI_PIN, &mosi_pin_config);
+  // Write to CR0 register.
+  max31856.tx[0] = max31856.config_reg_cr0; // Value to be written to the register.
+  max31856_spi_write_register(MAX31856_REG_CR0, 1);
 
-  XMC_USIC_CH_RXFIFO_Flush(MAX31856_USIC);
-  XMC_USIC_CH_RXFIFO_EnableEvent(MAX31856_USIC,
-                                 XMC_USIC_CH_RXFIFO_EVENT_CONF_STANDARD | XMC_USIC_CH_RXFIFO_EVENT_CONF_ALTERNATE);
-
-  max31856_spi_write_config();
+  // Write to CR1 register.
+  max31856.tx[0] = max31856.config_reg_cr1; // Value to be written to the register.
+  max31856_spi_write_register(MAX31856_REG_CR1, 1);
 }
 
 void max31856_tick() {
   max31856.temperature++;
-  max31856_spi_read_register(MAX31856_REG_CR0);
-  max31856_spi_write_register(MAX31856_REG_CR1);
 }
 
-bool max31856_spi_write_config() {
-  logd("[+] max31856_spi_write_config()\n\r");
-
-  return true;
+void max31856_spi_read_register(const MAX31856_REG_t register_address,
+                                const uint8_t data_length) {
+  // TODO: Implement register read function.
+  logd("[+] Thermocouple V2 Bricklet : max31856_spi_read_register()\n\r");
 }
 
-void max31856_spi_read_register(const MAX31856_REG_t register_address) {
-  /*
-    void rfm69_task_spi_transceive(void) {
-      XMC_SPI_CH_EnableSlaveSelect(RFM69_USIC, XMC_SPI_CH_SLAVE_SELECT_0);
-      XMC_USIC_CH_TXFIFO_EnableEvent(RFM69_USIC, XMC_USIC_CH_TXFIFO_EVENT_CONF_STANDARD);
-      XMC_USIC_CH_TriggerServiceRequest(RFM69_USIC, RFM69_SERVICE_REQUEST_TX);
+void max31856_spi_write_register(const MAX31856_REG_t register_address,
+                                 const uint8_t data_length) {
+  logd("[+] Thermocouple V2 Bricklet : max31856_spi_write_register()\n\r");
 
-      while(rfm69.data_read_index < rfm69.data_length) {
-        rfm69_rx_irq_handler();
-        coop_task_yield();
-      }
+  // Enable slave select line.
+  XMC_SPI_CH_EnableSlaveSelect(MAX31856_USIC, XMC_SPI_CH_SLAVE_SELECT_0);
 
-      XMC_SPI_CH_DisableSlaveSelect(RFM69_USIC);
-    }
-  */
-}
+  // Send address write byte.
+  XMC_SPI_CH_Transmit(MAX31856_USIC,
+                      (uint8_t)(register_address | BIT_MASK_REG_WRITE),
+                      XMC_SPI_CH_MODE_STANDARD);
+  // Wait for the TX.
+  while((XMC_SPI_CH_GetStatusFlag(MAX31856_USIC) & XMC_SPI_CH_STATUS_FLAG_TRANSMIT_SHIFT_INDICATION) == 0U)
+    ;
+  XMC_SPI_CH_ClearStatusFlag(MAX31856_USIC,
+                             XMC_SPI_CH_STATUS_FLAG_TRANSMIT_SHIFT_INDICATION);
 
-void max31856_spi_write_register(const MAX31856_REG_t register_address) {
-  /*
-    void rfm69_task_spi_transceive(void) {
-      XMC_SPI_CH_EnableSlaveSelect(RFM69_USIC, XMC_SPI_CH_SLAVE_SELECT_0);
-      XMC_USIC_CH_TXFIFO_EnableEvent(RFM69_USIC, XMC_USIC_CH_TXFIFO_EVENT_CONF_STANDARD);
-      XMC_USIC_CH_TriggerServiceRequest(RFM69_USIC, RFM69_SERVICE_REQUEST_TX);
+  max31856.index = 0;
 
-      while(rfm69.data_read_index < rfm69.data_length) {
-        rfm69_rx_irq_handler();
-        coop_task_yield();
-      }
+  while(max31856.index < data_length)
+  {
+    // Send write data byte.
+    XMC_SPI_CH_Transmit(MAX31856_USIC,
+                        max31856.tx[max31856.index++],
+                        XMC_SPI_CH_MODE_STANDARD);
+    // Wait for the TX.
+    while((XMC_SPI_CH_GetStatusFlag(MAX31856_USIC) & XMC_SPI_CH_STATUS_FLAG_TRANSMIT_SHIFT_INDICATION) == 0U)
+      ;
+    XMC_SPI_CH_ClearStatusFlag(MAX31856_USIC, XMC_SPI_CH_STATUS_FLAG_TRANSMIT_SHIFT_INDICATION);
+  }
 
-      XMC_SPI_CH_DisableSlaveSelect(RFM69_USIC);
-    }
-  */
+  // Disable slave select line.
+  XMC_SPI_CH_DisableSlaveSelect(MAX31856_USIC);
 }
 
 short int max31856_get_temperature() {

@@ -32,7 +32,7 @@
 
 int main(void) {
 	logging_init();
-	logd("Start Thermocouple V2 Bricklet\n\r");
+	logd("[+] Thermocouple V2 Bricklet : main()\n\r");
 
 	communication_init();
 	max31856_init();

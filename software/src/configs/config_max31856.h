@@ -41,12 +41,4 @@
 #define MAX31856_MISO_INPUT           XMC_USIC_CH_INPUT_DX0
 #define MAX31856_MISO_SOURCE          0b010 // DX0C
 
-#define MAX31856_SERVICE_REQUEST_RX   2
-#define MAX31856_SERVICE_REQUEST_TX   3
-
-#define MAX31856_IRQ_RX               11
-#define MAX31856_IRQ_RX_PRIORITY      2
-#define MAX31856_IRQ_TX               12
-#define MAX31856_IRQ_TX_PRIORITY      3
-
 #endif

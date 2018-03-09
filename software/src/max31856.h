@@ -25,6 +25,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#define BIT_MASK_REG_WRITE 128
+
 typedef enum MAX31856_CONFIG_AVERAGING {
   MAX31856_CONFIG_AVERAGING_1 = 1,
   MAX31856_CONFIG_AVERAGING_2 = 2, 
@@ -52,7 +54,7 @@ typedef enum MAX31856_CONFIG_FILTER {
 } MAX31856_CONFIG_FILTER_t;
 
 typedef enum MAX31856_REG {
-  MAX31856_REG_CR0 = 0x00, // Configuration 0 Register.
+  MAX31856_REG_CR0 = 0, // Configuration 0 Register.
   MAX31856_REG_CR1, // Configuration 1 Register.
   MAX31856_REG_MASK, // Fault Mask Register.
   MAX31856_REG_CJHF, // Cold-Junction High Fault Threshold.
@@ -72,19 +74,25 @@ typedef enum MAX31856_REG {
 
 typedef struct {
   short int temperature;
+  uint8_t config_reg_cr0;
+  uint8_t config_reg_cr1;
   MAX31856_CONFIG_AVERAGING_t config_averaging;
   MAX31856_CONFIG_TYPE_t config_thermocouple_type;
   MAX31856_CONFIG_FILTER_t config_filter;
   bool error_state_changed;
   bool error_state_over_current;
   bool error_state_open_circuit;
+  uint8_t rx[4];
+  uint8_t tx[4];
+  uint8_t index;
 } MAX31856_t;
 
 void max31856_init();
 void max31856_tick();
-bool max31856_spi_write_config(void);
-void max31856_spi_read_register(const MAX31856_REG_t register_address);
-void max31856_spi_write_register(const MAX31856_REG_t register_address);
+void max31856_spi_read_register(const MAX31856_REG_t register_address,
+                                const uint8_t data_length);
+void max31856_spi_write_register(const MAX31856_REG_t register_address,
+                                 const uint8_t data_length);
 
 short int max31856_get_temperature(void);
 
