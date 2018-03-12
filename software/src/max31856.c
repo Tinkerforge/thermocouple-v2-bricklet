@@ -37,7 +37,7 @@
  * BIT-7     BIT-6     BIT-5     BIT-4   BIT-3     BIT-2     BIT-1     BIT-0
  * ========  ========  ================  ========  ========  ========  ========
  * CMODE     1SHOT     OCFAULT           CJ        FAULT     FLTCLEAR  FILTER
- * 1         0         0          1      0         0         0         0
+ * 1         0         0         1       0         0         0         0
  *
  * Default CR1 value (35):
  *
@@ -60,10 +60,20 @@ MAX31856_t max31856 = {
   .error_state_changed = false,
   .error_state_over_current = false,
   .error_state_open_circuit = false,
-  .rx = {0, 0, 0, 0},
-  .tx = {0, 0, 0, 0},
+  .rx = {0, 0, 0, 0, 0, 0, 0, 0},
+  .tx = {0, 0, 0, 0, 0, 0, 0, 0},
   .index = 0
 };
+
+static void drain_rx_buffer() {
+  if ((XMC_USIC_CH_GetReceiveBufferStatus(MAX31856_USIC) & XMC_USIC_CH_RBUF_STATUS_DATA_VALID0)) {
+    XMC_SPI_CH_GetReceivedData(MAX31856_USIC);
+  }
+
+  if ((XMC_USIC_CH_GetReceiveBufferStatus(MAX31856_USIC) & XMC_USIC_CH_RBUF_STATUS_DATA_VALID1)) {
+    XMC_SPI_CH_GetReceivedData(MAX31856_USIC);
+  }
+}
 
 void max31856_init() {
   logd("[+] Thermocouple V2 Bricklet : max31856_init()\n\r");
@@ -78,6 +88,18 @@ void max31856_init() {
     .parity_mode    = XMC_USIC_CH_PARITY_MODE_NONE
   };
 
+  // SELECT pin configuration.
+  const XMC_GPIO_CONFIG_t select_pin_config = {
+    .mode             = MAX31856_SELECT_PIN_AF,
+    .output_level     = XMC_GPIO_OUTPUT_LEVEL_HIGH
+  };
+
+  // SCLK pin configuration.
+  const XMC_GPIO_CONFIG_t sclk_pin_config = {
+    .mode             = MAX31856_SCLK_PIN_AF,
+    .output_level     = XMC_GPIO_OUTPUT_LEVEL_HIGH
+  };
+
   // MOSI pin configuration.
   const XMC_GPIO_CONFIG_t mosi_pin_config = {
     .mode             = MAX31856_MOSI_PIN_AF,
@@ -88,18 +110,6 @@ void max31856_init() {
   const XMC_GPIO_CONFIG_t miso_pin_config = {
     .mode             = XMC_GPIO_MODE_INPUT_TRISTATE,
     .input_hysteresis = XMC_GPIO_INPUT_HYSTERESIS_STANDARD
-  };
-
-  // SCLK pin configuration.
-  const XMC_GPIO_CONFIG_t sclk_pin_config = {
-    .mode             = MAX31856_SCLK_PIN_AF,
-    .output_level     = XMC_GPIO_OUTPUT_LEVEL_HIGH
-  };
-
-  // SELECT pin configuration.
-  const XMC_GPIO_CONFIG_t select_pin_config = {
-    .mode             = MAX31856_SELECT_PIN_AF,
-    .output_level     = XMC_GPIO_OUTPUT_LEVEL_HIGH
   };
 
   // Initialize USIC channel in SPI master mode.
@@ -115,6 +125,9 @@ void max31856_init() {
   XMC_SPI_CH_SetBitOrderMsbFirst(MAX31856_USIC);
   // Set word length.
   XMC_SPI_CH_SetWordLength(MAX31856_USIC, (uint8_t)8U);
+  // Frame is manually ended by deselecting the slave select pin.
+  XMC_SPI_CH_SetFrameLength(MAX31856_USIC, (uint8_t)64U);
+
   // Full-Duplex.
   XMC_SPI_CH_SetTransmitMode(MAX31856_USIC, XMC_SPI_CH_MODE_STANDARD);
   // Set input source path.
@@ -146,14 +159,52 @@ void max31856_tick() {
 
 void max31856_spi_read_register(const MAX31856_REG_t register_address,
                                 const uint8_t data_length) {
-  // TODO: Implement register read function.
-  logd("[+] Thermocouple V2 Bricklet : max31856_spi_read_register()\n\r");
+  // Enable slave select line.
+  XMC_SPI_CH_EnableSlaveSelect(MAX31856_USIC, XMC_SPI_CH_SLAVE_SELECT_0);
+
+  // Send address write byte.
+  XMC_SPI_CH_Transmit(MAX31856_USIC,
+                      (uint8_t)(register_address),
+                      XMC_SPI_CH_MODE_STANDARD);
+
+  // Wait for the TX to finish.
+  while((XMC_SPI_CH_GetStatusFlag(MAX31856_USIC) & XMC_SPI_CH_STATUS_FLAG_TRANSMIT_SHIFT_INDICATION) == 0U)
+    ;
+
+  XMC_SPI_CH_ClearStatusFlag(MAX31856_USIC, XMC_SPI_CH_STATUS_FLAG_TRANSMIT_SHIFT_INDICATION);
+
+  // Drain RX buffer.
+  drain_rx_buffer();
+
+  max31856.index = 0;
+
+  while(max31856.index < data_length)
+  {
+    // Receive one byte.
+    XMC_SPI_CH_Receive(MAX31856_USIC, XMC_SPI_CH_MODE_STANDARD);
+
+    // Wait for the RX to finish.
+    while((XMC_SPI_CH_GetStatusFlag(MAX31856_USIC) & XMC_SPI_CH_STATUS_FLAG_TRANSMIT_SHIFT_INDICATION) == 0U)
+      ;
+
+    while((XMC_SPI_CH_GetStatusFlag(MAX31856_USIC) & XMC_SPI_CH_STATUS_FLAG_RECEIVE_INDICATION) == 0U)
+      ;
+
+    max31856.rx[max31856.index++] = (uint8_t)XMC_SPI_CH_GetReceivedData(MAX31856_USIC);
+
+    XMC_SPI_CH_ClearStatusFlag(MAX31856_USIC, XMC_SPI_CH_STATUS_FLAG_TRANSMIT_SHIFT_INDICATION);
+    XMC_SPI_CH_ClearStatusFlag(MAX31856_USIC, XMC_SPI_CH_STATUS_FLAG_RECEIVE_INDICATION);
+
+    // Drain RX buffer.
+    drain_rx_buffer();
+  }
+
+  // Disable slave select line.
+  XMC_SPI_CH_DisableSlaveSelect(MAX31856_USIC);
 }
 
 void max31856_spi_write_register(const MAX31856_REG_t register_address,
                                  const uint8_t data_length) {
-  logd("[+] Thermocouple V2 Bricklet : max31856_spi_write_register()\n\r");
-
   // Enable slave select line.
   XMC_SPI_CH_EnableSlaveSelect(MAX31856_USIC, XMC_SPI_CH_SLAVE_SELECT_0);
 
@@ -164,8 +215,12 @@ void max31856_spi_write_register(const MAX31856_REG_t register_address,
   // Wait for the TX.
   while((XMC_SPI_CH_GetStatusFlag(MAX31856_USIC) & XMC_SPI_CH_STATUS_FLAG_TRANSMIT_SHIFT_INDICATION) == 0U)
     ;
+
   XMC_SPI_CH_ClearStatusFlag(MAX31856_USIC,
                              XMC_SPI_CH_STATUS_FLAG_TRANSMIT_SHIFT_INDICATION);
+
+  // Drain RX buffer.
+  drain_rx_buffer();
 
   max31856.index = 0;
 
@@ -178,7 +233,11 @@ void max31856_spi_write_register(const MAX31856_REG_t register_address,
     // Wait for the TX.
     while((XMC_SPI_CH_GetStatusFlag(MAX31856_USIC) & XMC_SPI_CH_STATUS_FLAG_TRANSMIT_SHIFT_INDICATION) == 0U)
       ;
+
     XMC_SPI_CH_ClearStatusFlag(MAX31856_USIC, XMC_SPI_CH_STATUS_FLAG_TRANSMIT_SHIFT_INDICATION);
+
+    // Drain RX buffer.
+    drain_rx_buffer();
   }
 
   // Disable slave select line.
