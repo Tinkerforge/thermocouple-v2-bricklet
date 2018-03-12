@@ -26,6 +26,7 @@
 #include <stdbool.h>
 
 #define BIT_MASK_REG_WRITE 128
+#define RX_TX_BUFFER_LENGTH 8
 
 typedef enum MAX31856_CONFIG_AVERAGING {
   MAX31856_CONFIG_AVERAGING_1 = 1,
@@ -82,8 +83,8 @@ typedef struct {
   bool error_state_changed;
   bool error_state_over_current;
   bool error_state_open_circuit;
-  uint8_t rx[4];
-  uint8_t tx[4];
+  uint8_t rx[RX_TX_BUFFER_LENGTH];
+  uint8_t tx[RX_TX_BUFFER_LENGTH];
   uint8_t index;
 } MAX31856_t;
 
@@ -93,7 +94,6 @@ void max31856_spi_read_register(const MAX31856_REG_t register_address,
                                 const uint8_t data_length);
 void max31856_spi_write_register(const MAX31856_REG_t register_address,
                                  const uint8_t data_length);
-
 short int max31856_get_temperature(void);
 
 #endif
