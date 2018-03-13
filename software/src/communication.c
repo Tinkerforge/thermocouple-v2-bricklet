@@ -46,7 +46,41 @@ BootloaderHandleMessageResponse set_configuration(const SetConfiguration *data) 
 	max31856.config_thermocouple_type = (MAX31856_CONFIG_TYPE_t)data->thermocouple_type;
 	max31856.config_filter = (MAX31856_CONFIG_FILTER_t)data->filter;
 
+	uint8_t cr0;
+	uint8_t cr1;
+
+	max31856_spi_read_register(MAX31856_REG_CR0, 1);
+	cr0 = max31856.rx[0];
+
+	if (max31856.config_filter == MAX31856_CONFIG_FILTER_50HZ) {
+		cr0 &= ~1;
+	}
+	else if (max31856.config_filter == MAX31856_CONFIG_FILTER_60HZ) {
+		cr0 |= 1;
+	}
+
+	if (max31856.config_averaging < MAX31856_CONFIG_AVERAGING_16) {
+		cr1 = (uint8_t)(max31856.config_averaging);
+		cr1 = (cr1 << 4);
+	}
+	else {
+		cr1 = 0;
+		cr1 = (1 << 6);
+	}
+
+	if (max31856.config_thermocouple_type < MAX31856_CONFIG_TYPE_G32) {
+		cr1 |= (uint8_t)(max31856.config_thermocouple_type);
+	}
+	else {
+		cr1 |= 12;
+	}
+
 	// Write the config to MAX31856.
+	max31856.tx[0] = cr0;
+	max31856_spi_write_register(MAX31856_REG_CR0, 1);
+
+	max31856.tx[0] = cr1;
+	max31856_spi_write_register(MAX31856_REG_CR1, 1);
 
 	return HANDLE_MESSAGE_RESPONSE_EMPTY;
 }
@@ -97,7 +131,6 @@ void communication_tick(void) {
 }
 
 void communication_init(void) {
-	// TODO: Add proper functions
 	callback_value_init(&callback_value_temperature, max31856_get_temperature);
 
 	communication_callback_init();
