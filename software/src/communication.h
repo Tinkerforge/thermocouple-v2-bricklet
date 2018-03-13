@@ -125,8 +125,10 @@ typedef struct {
 
 // Function prototypes
 BootloaderHandleMessageResponse set_configuration(const SetConfiguration *data);
-BootloaderHandleMessageResponse get_configuration(const GetConfiguration *data, GetConfiguration_Response *response);
-BootloaderHandleMessageResponse get_error_state(const GetErrorState *data, GetErrorState_Response *response);
+BootloaderHandleMessageResponse get_configuration(const GetConfiguration *data,
+                                                  GetConfiguration_Response *response);
+BootloaderHandleMessageResponse get_error_state(const GetErrorState *data,
+                                                GetErrorState_Response *response);
 
 // Callbacks
 bool handle_temperature_callback(void);

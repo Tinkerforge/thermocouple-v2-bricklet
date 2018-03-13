@@ -23,55 +23,80 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "max31856.h"
+
 #include "configs/config_max31856.h"
 #include "bricklib2/logging/logging.h"
 
 #include "xmc_gpio.h"
 #include "xmc_usic.h"
 #include "xmc_spi.h"
-#include "max31856.h"
-
-/*
- * Default CR0 value (144):
- *
- * BIT-7     BIT-6     BIT-5     BIT-4   BIT-3     BIT-2     BIT-1     BIT-0
- * ========  ========  ================  ========  ========  ========  ========
- * CMODE     1SHOT     OCFAULT           CJ        FAULT     FLTCLEAR  FILTER
- * 1         0         0         1       0         0         0         0
- *
- * Default CR1 value (35):
- *
- * BIT-7     BIT-6     BIT-5     BIT-4     BIT-3     BIT-2     BIT-1     BIT-0
- * ========  ============================  ======================================
- * RESERVED  AVGSEL                        TC TYPE
- * 0         0         1         0         0         0         1         1
- *
- */
-#define DEFAULT_CR0_VALUE 144
-#define DEFAULT_CR1_VALUE 35
 
 MAX31856_t max31856 = {
   .temperature = 0,
-  .config_reg_cr0 = DEFAULT_CR0_VALUE,
-  .config_reg_cr1 = DEFAULT_CR1_VALUE,
-  .config_averaging = MAX31856_CONFIG_AVERAGING_4,
+  .skip_do_update_temperature_turns = 0,
+  .config_reg_cr0 = MAX31856_CR0_CMODE_AUTO | MAX31856_CR0_OCFAULT_1 | MAX31856_CR0_FILTER_50HZ,
+  .config_reg_cr1 = MAX31856_CR1_AVGSEL_16 | MAX31856_CR1_TC_TYPE_K,
+  .config_averaging = MAX31856_CONFIG_AVERAGING_16,
   .config_thermocouple_type = MAX31856_CONFIG_TYPE_K,
-  .config_filter = MAX31856_CONFIG_FILTER_60HZ,
-  .error_state_changed = false,
-  .error_state_over_current = false,
+  .config_filter = MAX31856_CONFIG_FILTER_50HZ,
+  .do_error_callback = false,
   .error_state_open_circuit = false,
+  .error_state_over_under_voltage = false,
   .rx = {0, 0, 0, 0, 0, 0, 0, 0},
   .tx = {0, 0, 0, 0, 0, 0, 0, 0},
   .index = 0
 };
 
 static void drain_rx_buffer() {
-  if ((XMC_USIC_CH_GetReceiveBufferStatus(MAX31856_USIC) & XMC_USIC_CH_RBUF_STATUS_DATA_VALID0)) {
-    XMC_SPI_CH_GetReceivedData(MAX31856_USIC);
+  // Drain RBUF[0] and RBUF[1].
+  XMC_SPI_CH_GetReceivedData(MAX31856_USIC);
+  XMC_SPI_CH_GetReceivedData(MAX31856_USIC);
+}
+
+static void do_update_temperature() {
+  max31856_spi_read_register(MAX31856_REG_LTCBH, 3);
+
+  max31856.temperature = (max31856.rx[2] | (max31856.rx[1] << 8) | (max31856.rx[0] << 16)) >> 5;
+
+  // Transfer sign of 19 bit temperature value to 32 bit variable.
+  if(max31856.temperature & 0x40000) {
+    max31856.temperature |= 0xFFFC0000;
   }
 
-  if ((XMC_USIC_CH_GetReceiveBufferStatus(MAX31856_USIC) & XMC_USIC_CH_RBUF_STATUS_DATA_VALID1)) {
-    XMC_SPI_CH_GetReceivedData(MAX31856_USIC);
+  // For G8 and G32 we return the value as read from the MAX31856.
+  if(max31856.config_thermocouple_type != MAX31856_CONFIG_TYPE_G8 &&
+     max31856.config_thermocouple_type != MAX31856_CONFIG_TYPE_G32) {
+      // *100/128 for 0.01°C steps.
+      max31856.temperature = (max31856.temperature * 100) / 128;
+  }
+}
+
+static void do_update_error_state() {
+  // Save current error state.
+  bool _error_state_open_circuit = max31856.error_state_open_circuit;
+  bool _error_state_over_under_voltage = max31856.error_state_over_under_voltage;
+
+  // Read fault status register of MAX31856.
+  max31856_spi_read_register(MAX31856_REG_SR, 1);
+
+  if((max31856.rx[0] & 1) != 0) {
+    max31856.error_state_open_circuit = true;
+  }
+  else {
+    max31856.error_state_open_circuit = false;
+  }
+
+  if((max31856.rx[0] & 2) != 0) {
+    max31856.error_state_over_under_voltage = true;
+  }
+  else {
+    max31856.error_state_over_under_voltage = false;
+  }
+
+  if (_error_state_open_circuit != max31856.error_state_open_circuit ||
+      _error_state_over_under_voltage != max31856.error_state_over_under_voltage) {
+          max31856.do_error_callback = true;
   }
 }
 
@@ -141,20 +166,26 @@ void max31856_init() {
   // Do initial configuration of MAX31856.
 
   // Write to fault mask register.
-  max31856.tx[0] = 254; // Value to be written to the register.
+  max31856.tx[0] = 252; // OV/UV and Open fault mask enabled.
   max31856_spi_write_register(MAX31856_REG_MASK, 1);
 
-  // Write to CR0 register.
-  max31856.tx[0] = max31856.config_reg_cr0; // Value to be written to the register.
-  max31856_spi_write_register(MAX31856_REG_CR0, 1);
-
-  // Write to CR1 register.
-  max31856.tx[0] = max31856.config_reg_cr1; // Value to be written to the register.
-  max31856_spi_write_register(MAX31856_REG_CR1, 1);
+  // Write to CR0 and CR1 registers.
+  max31856.tx[0] = max31856.config_reg_cr0;
+  max31856.tx[1] = max31856.config_reg_cr1;
+  max31856_spi_write_register(MAX31856_REG_CR0, 2);
 }
 
 void max31856_tick() {
-  max31856.temperature++;
+  if (max31856.skip_do_update_temperature_turns > 0) {
+    max31856.skip_do_update_temperature_turns--;
+  }
+  else {
+    if(!max31856.error_state_open_circuit) {
+      do_update_temperature();
+    }
+  }
+
+  do_update_error_state();
 }
 
 void max31856_spi_read_register(const MAX31856_REG_t register_address,
@@ -168,8 +199,9 @@ void max31856_spi_read_register(const MAX31856_REG_t register_address,
                       XMC_SPI_CH_MODE_STANDARD);
 
   // Wait for the TX to finish.
-  while((XMC_SPI_CH_GetStatusFlag(MAX31856_USIC) & XMC_SPI_CH_STATUS_FLAG_TRANSMIT_SHIFT_INDICATION) == 0U)
+  while((XMC_SPI_CH_GetStatusFlag(MAX31856_USIC) & XMC_SPI_CH_STATUS_FLAG_TRANSMIT_SHIFT_INDICATION) == 0U) {
     ;
+  }
 
   XMC_SPI_CH_ClearStatusFlag(MAX31856_USIC, XMC_SPI_CH_STATUS_FLAG_TRANSMIT_SHIFT_INDICATION);
 
@@ -184,11 +216,13 @@ void max31856_spi_read_register(const MAX31856_REG_t register_address,
     XMC_SPI_CH_Receive(MAX31856_USIC, XMC_SPI_CH_MODE_STANDARD);
 
     // Wait for the RX to finish.
-    while((XMC_SPI_CH_GetStatusFlag(MAX31856_USIC) & XMC_SPI_CH_STATUS_FLAG_TRANSMIT_SHIFT_INDICATION) == 0U)
+    while((XMC_SPI_CH_GetStatusFlag(MAX31856_USIC) & XMC_SPI_CH_STATUS_FLAG_TRANSMIT_SHIFT_INDICATION) == 0U) {
       ;
+    }
 
-    while((XMC_SPI_CH_GetStatusFlag(MAX31856_USIC) & XMC_SPI_CH_STATUS_FLAG_RECEIVE_INDICATION) == 0U)
+    while((XMC_SPI_CH_GetStatusFlag(MAX31856_USIC) & XMC_SPI_CH_STATUS_FLAG_RECEIVE_INDICATION) == 0U) {
       ;
+    }
 
     max31856.rx[max31856.index++] = (uint8_t)XMC_SPI_CH_GetReceivedData(MAX31856_USIC);
 
@@ -213,8 +247,9 @@ void max31856_spi_write_register(const MAX31856_REG_t register_address,
                       (uint8_t)(register_address | BIT_MASK_REG_WRITE),
                       XMC_SPI_CH_MODE_STANDARD);
   // Wait for the TX.
-  while((XMC_SPI_CH_GetStatusFlag(MAX31856_USIC) & XMC_SPI_CH_STATUS_FLAG_TRANSMIT_SHIFT_INDICATION) == 0U)
+  while((XMC_SPI_CH_GetStatusFlag(MAX31856_USIC) & XMC_SPI_CH_STATUS_FLAG_TRANSMIT_SHIFT_INDICATION) == 0U) {
     ;
+  }
 
   XMC_SPI_CH_ClearStatusFlag(MAX31856_USIC,
                              XMC_SPI_CH_STATUS_FLAG_TRANSMIT_SHIFT_INDICATION);
@@ -231,8 +266,9 @@ void max31856_spi_write_register(const MAX31856_REG_t register_address,
                         max31856.tx[max31856.index++],
                         XMC_SPI_CH_MODE_STANDARD);
     // Wait for the TX.
-    while((XMC_SPI_CH_GetStatusFlag(MAX31856_USIC) & XMC_SPI_CH_STATUS_FLAG_TRANSMIT_SHIFT_INDICATION) == 0U)
+    while((XMC_SPI_CH_GetStatusFlag(MAX31856_USIC) & XMC_SPI_CH_STATUS_FLAG_TRANSMIT_SHIFT_INDICATION) == 0U) {
       ;
+    }
 
     XMC_SPI_CH_ClearStatusFlag(MAX31856_USIC, XMC_SPI_CH_STATUS_FLAG_TRANSMIT_SHIFT_INDICATION);
 
@@ -244,6 +280,6 @@ void max31856_spi_write_register(const MAX31856_REG_t register_address,
   XMC_SPI_CH_DisableSlaveSelect(MAX31856_USIC);
 }
 
-short int max31856_get_temperature() {
+int32_t max31856_get_temperature() {
   return max31856.temperature;
 }

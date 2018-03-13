@@ -25,8 +25,34 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#define SKIP_UPDATE_TEMP_TURNS 8192
+
 #define BIT_MASK_REG_WRITE 128
 #define RX_TX_BUFFER_LENGTH 8
+
+#define MAX31856_CR0_CMODE_AUTO (1 << 7)
+#define MAX31856_CR0_1SHOT (1 << 6)
+#define MAX31856_CR0_OCFAULT_1 (1 << 4)
+#define MAX31856_CR0_OCFAULT_2 (2 << 4)
+#define MAX31856_CR0_OCFAULT_3 (3 << 4)
+#define MAX31856_CR0_CJ_DISABLE (1 << 3)
+#define MAX31856_CR0_FAULT_INTERRUPT (1 << 2)
+#define MAX31856_CR0_FAULTCLR (1 << 1)
+#define MAX31856_CR0_FILTER_50HZ 1
+
+#define MAX31856_CR1_AVGSEL_2 (1 << 4)
+#define MAX31856_CR1_AVGSEL_4 (2 << 4)
+#define MAX31856_CR1_AVGSEL_8 (3 << 4)
+#define MAX31856_CR1_AVGSEL_16 (4 << 4)
+#define MAX31856_CR1_TC_TYPE_E 1
+#define MAX31856_CR1_TC_TYPE_J 2
+#define MAX31856_CR1_TC_TYPE_K 3
+#define MAX31856_CR1_TC_TYPE_N 4
+#define MAX31856_CR1_TC_TYPE_R 5
+#define MAX31856_CR1_TC_TYPE_S 6
+#define MAX31856_CR1_TC_TYPE_T 7
+#define MAX31856_CR1_TC_TYPE_G8 8
+#define MAX31856_CR1_TC_TYPE_G32 12
 
 typedef enum MAX31856_CONFIG_AVERAGING {
   MAX31856_CONFIG_AVERAGING_1 = 1,
@@ -74,19 +100,22 @@ typedef enum MAX31856_REG {
 } MAX31856_REG_t;
 
 typedef struct {
-  short int temperature;
+  int32_t temperature;
+  uint16_t skip_do_update_temperature_turns;
   uint8_t config_reg_cr0;
   uint8_t config_reg_cr1;
   MAX31856_CONFIG_AVERAGING_t config_averaging;
   MAX31856_CONFIG_TYPE_t config_thermocouple_type;
   MAX31856_CONFIG_FILTER_t config_filter;
-  bool error_state_changed;
-  bool error_state_over_current;
+  bool do_error_callback;
   bool error_state_open_circuit;
+  bool error_state_over_under_voltage;
   uint8_t rx[RX_TX_BUFFER_LENGTH];
   uint8_t tx[RX_TX_BUFFER_LENGTH];
   uint8_t index;
 } MAX31856_t;
+
+extern MAX31856_t max31856;
 
 void max31856_init();
 void max31856_tick();
@@ -94,6 +123,6 @@ void max31856_spi_read_register(const MAX31856_REG_t register_address,
                                 const uint8_t data_length);
 void max31856_spi_write_register(const MAX31856_REG_t register_address,
                                  const uint8_t data_length);
-short int max31856_get_temperature(void);
+int32_t max31856_get_temperature(void);
 
 #endif
