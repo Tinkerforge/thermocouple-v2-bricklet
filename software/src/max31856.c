@@ -32,21 +32,7 @@
 #include "xmc_usic.h"
 #include "xmc_spi.h"
 
-MAX31856_t max31856 = {
-  .temperature = 0,
-  .skip_do_update_temperature_turns = 0,
-  .config_reg_cr0 = MAX31856_CR0_CMODE_AUTO | MAX31856_CR0_OCFAULT_1 | MAX31856_CR0_FILTER_50HZ,
-  .config_reg_cr1 = MAX31856_CR1_AVGSEL_16 | MAX31856_CR1_TC_TYPE_K,
-  .config_averaging = MAX31856_CONFIG_AVERAGING_16,
-  .config_thermocouple_type = MAX31856_CONFIG_TYPE_K,
-  .config_filter = MAX31856_CONFIG_FILTER_50HZ,
-  .do_error_callback = false,
-  .error_state_open_circuit = false,
-  .error_state_over_under_voltage = false,
-  .rx = {0, 0, 0, 0, 0, 0, 0, 0},
-  .tx = {0, 0, 0, 0, 0, 0, 0, 0},
-  .index = 0
-};
+MAX31856_t max31856;
 
 static void drain_rx_buffer() {
   // Drain RBUF[0] and RBUF[1].
@@ -102,6 +88,19 @@ static void do_update_error_state() {
 
 void max31856_init() {
   logd("[+] Thermocouple V2 Bricklet : max31856_init()\n\r");
+
+  // Initialize default configuration.
+  max31856.temperature = 0;
+  max31856.skip_do_update_temperature_turns = 0;
+  max31856.config_reg_cr0 = MAX31856_CR0_CMODE_AUTO | MAX31856_CR0_OCFAULT_1 | MAX31856_CR0_FILTER_50HZ;
+  max31856.config_reg_cr1 = MAX31856_CR1_AVGSEL_16 | MAX31856_CR1_TC_TYPE_K;
+  max31856.config_averaging = MAX31856_CONFIG_AVERAGING_16;
+  max31856.config_thermocouple_type = MAX31856_CONFIG_TYPE_K;
+  max31856.config_filter = MAX31856_CONFIG_FILTER_50HZ;
+  max31856.do_error_callback = false;
+  max31856.error_state_open_circuit = false;
+  max31856.error_state_over_under_voltage = false;
+  max31856.index = 0;
 
   // Initialize SPI interface to MAX31856.
 
