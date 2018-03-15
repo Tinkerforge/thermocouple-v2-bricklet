@@ -69,7 +69,7 @@ BootloaderHandleMessageResponse set_configuration(const SetConfiguration *data) 
 		cr0 &= ~1;
 	}
 	else {
-		return HANDLE_MESSAGE_RESPONSE_EMPTY;
+		return HANDLE_MESSAGE_RESPONSE_INVALID_PARAMETER;
 	}
 
 	if (data->averaging == THERMOCOUPLE_V2_AVERAGING_1) {
@@ -88,7 +88,7 @@ BootloaderHandleMessageResponse set_configuration(const SetConfiguration *data) 
 		cr1 = MAX31856_CR1_AVGSEL_16;
 	}
 	else {
-		return HANDLE_MESSAGE_RESPONSE_EMPTY;
+		return HANDLE_MESSAGE_RESPONSE_INVALID_PARAMETER;
 	}
 
 	if (data->thermocouple_type == THERMOCOUPLE_V2_TYPE_B) {
@@ -122,7 +122,7 @@ BootloaderHandleMessageResponse set_configuration(const SetConfiguration *data) 
 		cr1 |= MAX31856_CR1_TC_TYPE_G32;
 	}
 	else {
-		return HANDLE_MESSAGE_RESPONSE_EMPTY;
+		return HANDLE_MESSAGE_RESPONSE_INVALID_PARAMETER;
 	}
 
 	// Write the config to MAX31856.
