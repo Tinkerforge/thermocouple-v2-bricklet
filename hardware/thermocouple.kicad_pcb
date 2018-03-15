@@ -1,9 +1,9 @@
-(kicad_pcb (version 4) (host pcbnew 4.0.2+dfsg1-stable)
+(kicad_pcb (version 4) (host pcbnew 4.0.7-e2-6376~58~ubuntu17.04.1)
 
   (general
     (links 64)
     (no_connects 0)
-    (area 149.934499 124.734499 190.315501 155.115501)
+    (area 12.77915 124.069999 190.980001 197.465793)
     (thickness 1.6002)
     (drawings 13)
     (tracks 256)
@@ -6939,7 +6939,7 @@
       (xy 1.301301 2.715081) (xy 1.302426 2.714986)) (layer B.SilkS) (width 0.01))
   )
 
-  (gr_text status (at 171.775 152.765) (layer F.SilkS)
+  (gr_text Status (at 171.775 152.765) (layer F.SilkS)
     (effects (font (size 0.8 0.8) (thickness 0.14986)))
   )
   (gr_line (start 187.625 154.925) (end 152.625 154.925) (angle 90) (layer Edge.Cuts) (width 0.381))
@@ -6949,7 +6949,7 @@
   (gr_text "Thermocouple\n2.0" (at 178.375 150.875) (layer F.SilkS)
     (effects (font (size 0.8 0.8) (thickness 0.15)))
   )
-  (gr_text fault (at 167.515 152.765) (layer F.SilkS)
+  (gr_text Fault (at 167.515 152.765) (layer F.SilkS)
     (effects (font (size 0.8 0.8) (thickness 0.14986)))
   )
   (gr_arc (start 152.625 152.425) (end 152.625 154.925) (angle 90) (layer Edge.Cuts) (width 0.381))
