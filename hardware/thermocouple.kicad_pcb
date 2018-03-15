@@ -6203,7 +6203,7 @@
   )
 
   (module kicad-libraries:CE_5mm (layer Rückseite) (tedit 5922FFD4) (tstamp 55BB0613)
-    (at 165.125 139.925 180)
+    (at 160.125 139.925 180)
     (fp_text reference VAL (at 0 0 180) (layer B.SilkS) hide
       (effects (font (size 0.2 0.2) (thickness 0.05)) (justify mirror))
     )
@@ -6297,7 +6297,7 @@
   )
 
   (module kicad-libraries:WEEE_7mm (layer Rückseite) (tedit 5922FFAE) (tstamp 55BB3ADA)
-    (at 175.125 139.925 180)
+    (at 170.125 139.925 180)
     (fp_text reference G*** (at 0 0 180) (layer B.SilkS) hide
       (effects (font (size 0.2 0.2) (thickness 0.05)) (justify mirror))
     )
@@ -6730,7 +6730,7 @@
   )
 
   (module kicad-libraries:Logo_CoMCU (layer Rückseite) (tedit 0) (tstamp 5A5E4F1D)
-    (at 185.285 139.865 180)
+    (at 180.125 139.925 180)
     (fp_text reference G*** (at 0 0 180) (layer B.SilkS) hide
       (effects (font (thickness 0.3)) (justify mirror))
     )
