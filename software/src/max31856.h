@@ -30,6 +30,7 @@
 #define BIT_MASK_REG_WRITE 128
 #define RX_TX_BUFFER_LENGTH 8
 
+// CR0 register bitmasks.
 #define MAX31856_CR0_CMODE_AUTO (1 << 7)
 #define MAX31856_CR0_1SHOT (1 << 6)
 #define MAX31856_CR0_OCFAULT_1 (1 << 4)
@@ -40,6 +41,7 @@
 #define MAX31856_CR0_FAULTCLR (1 << 1)
 #define MAX31856_CR0_FILTER_50HZ 1
 
+// CR1 register bitmasks.
 #define MAX31856_CR1_AVGSEL_2 (1 << 4)
 #define MAX31856_CR1_AVGSEL_4 (2 << 4)
 #define MAX31856_CR1_AVGSEL_8 (3 << 4)
@@ -54,32 +56,7 @@
 #define MAX31856_CR1_TC_TYPE_G8 8
 #define MAX31856_CR1_TC_TYPE_G32 12
 
-typedef enum MAX31856_CONFIG_AVERAGING {
-  MAX31856_CONFIG_AVERAGING_1 = 1,
-  MAX31856_CONFIG_AVERAGING_2 = 2, 
-  MAX31856_CONFIG_AVERAGING_4 = 4, 
-  MAX31856_CONFIG_AVERAGING_8 = 8,
-  MAX31856_CONFIG_AVERAGING_16 = 16
-} MAX31856_CONFIG_AVERAGING_t;
-
-typedef enum MAX31856_CONFIG_TYPE {
-  MAX31856_CONFIG_TYPE_B = 0,
-  MAX31856_CONFIG_TYPE_E,
-  MAX31856_CONFIG_TYPE_J,
-  MAX31856_CONFIG_TYPE_K,
-  MAX31856_CONFIG_TYPE_N,
-  MAX31856_CONFIG_TYPE_R,
-  MAX31856_CONFIG_TYPE_S,
-  MAX31856_CONFIG_TYPE_T,
-  MAX31856_CONFIG_TYPE_G8,
-  MAX31856_CONFIG_TYPE_G32
-} MAX31856_CONFIG_TYPE_t;
-
-typedef enum MAX31856_CONFIG_FILTER {
-  MAX31856_CONFIG_FILTER_50HZ = 0,
-  MAX31856_CONFIG_FILTER_60HZ
-} MAX31856_CONFIG_FILTER_t;
-
+// MAX31856 register addresses.
 typedef enum MAX31856_REG {
   MAX31856_REG_CR0 = 0, // Configuration 0 Register.
   MAX31856_REG_CR1, // Configuration 1 Register.
@@ -104,9 +81,9 @@ typedef struct {
   uint16_t skip_do_update_temperature_turns;
   uint8_t config_reg_cr0;
   uint8_t config_reg_cr1;
-  MAX31856_CONFIG_AVERAGING_t config_averaging;
-  MAX31856_CONFIG_TYPE_t config_thermocouple_type;
-  MAX31856_CONFIG_FILTER_t config_filter;
+  uint8_t config_averaging;
+  uint8_t config_thermocouple_type;
+  uint8_t config_filter;
   bool do_error_callback;
   bool error_state_open_circuit;
   bool error_state_over_under_voltage;
@@ -117,8 +94,8 @@ typedef struct {
 
 extern MAX31856_t max31856;
 
-void max31856_init();
-void max31856_tick();
+void max31856_init(void);
+void max31856_tick(void);
 void max31856_spi_read_register(const MAX31856_REG_t register_address,
                                 const uint8_t data_length);
 void max31856_spi_write_register(const MAX31856_REG_t register_address,
