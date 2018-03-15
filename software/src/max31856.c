@@ -25,6 +25,7 @@
 
 #include "max31856.h"
 
+#include "communication.h"
 #include "configs/config_max31856.h"
 #include "bricklib2/logging/logging.h"
 
@@ -51,8 +52,8 @@ static void do_update_temperature() {
   }
 
   // For G8 and G32 we return the value as read from the MAX31856.
-  if(max31856.config_thermocouple_type != MAX31856_CONFIG_TYPE_G8 &&
-     max31856.config_thermocouple_type != MAX31856_CONFIG_TYPE_G32) {
+  if(max31856.config_thermocouple_type != THERMOCOUPLE_V2_TYPE_G8 &&
+     max31856.config_thermocouple_type != THERMOCOUPLE_V2_TYPE_G32) {
       // *100/128 for 0.01°C steps.
       max31856.temperature = (max31856.temperature * 100) / 128;
   }
@@ -94,9 +95,9 @@ void max31856_init() {
   max31856.skip_do_update_temperature_turns = 0;
   max31856.config_reg_cr0 = MAX31856_CR0_CMODE_AUTO | MAX31856_CR0_OCFAULT_1 | MAX31856_CR0_FILTER_50HZ;
   max31856.config_reg_cr1 = MAX31856_CR1_AVGSEL_16 | MAX31856_CR1_TC_TYPE_K;
-  max31856.config_averaging = MAX31856_CONFIG_AVERAGING_16;
-  max31856.config_thermocouple_type = MAX31856_CONFIG_TYPE_K;
-  max31856.config_filter = MAX31856_CONFIG_FILTER_50HZ;
+  max31856.config_averaging = (uint8_t)THERMOCOUPLE_V2_AVERAGING_16;
+  max31856.config_thermocouple_type = (uint8_t)THERMOCOUPLE_V2_TYPE_K;
+  max31856.config_filter = (uint8_t)THERMOCOUPLE_V2_FILTER_OPTION_50HZ;
   max31856.do_error_callback = false;
   max31856.error_state_open_circuit = false;
   max31856.error_state_over_under_voltage = false;

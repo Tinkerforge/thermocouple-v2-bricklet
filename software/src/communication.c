@@ -62,63 +62,63 @@ BootloaderHandleMessageResponse set_configuration(const SetConfiguration *data) 
 
 	cr0 = max31856.rx[0];
 
-	if ((MAX31856_CONFIG_FILTER_t)data->filter == MAX31856_CONFIG_FILTER_50HZ) {
+	if (data->filter == THERMOCOUPLE_V2_FILTER_OPTION_50HZ) {
 		cr0 |= MAX31856_CR0_FILTER_50HZ;
 	}
-	else if ((MAX31856_CONFIG_FILTER_t)data->filter == MAX31856_CONFIG_FILTER_60HZ) {
+	else if (data->filter == THERMOCOUPLE_V2_FILTER_OPTION_60HZ) {
 		cr0 &= ~1;
 	}
 	else {
 		return HANDLE_MESSAGE_RESPONSE_EMPTY;
 	}
 
-	if ((MAX31856_CONFIG_AVERAGING_t)data->averaging == MAX31856_CONFIG_AVERAGING_1) {
+	if (data->averaging == THERMOCOUPLE_V2_AVERAGING_1) {
 		;
 	}
-	else if ((MAX31856_CONFIG_AVERAGING_t)data->averaging == MAX31856_CONFIG_AVERAGING_2) {
+	else if (data->averaging == THERMOCOUPLE_V2_AVERAGING_2) {
 		cr1 = MAX31856_CR1_AVGSEL_2;
 	}
-	else if ((MAX31856_CONFIG_AVERAGING_t)data->averaging == MAX31856_CONFIG_AVERAGING_4) {
+	else if (data->averaging == THERMOCOUPLE_V2_AVERAGING_4) {
 		cr1 = MAX31856_CR1_AVGSEL_4;
 	}
-	else if ((MAX31856_CONFIG_AVERAGING_t)data->averaging == MAX31856_CONFIG_AVERAGING_8) {
+	else if (data->averaging == THERMOCOUPLE_V2_AVERAGING_8) {
 		cr1 = MAX31856_CR1_AVGSEL_8;
 	}
-	else if ((MAX31856_CONFIG_AVERAGING_t)data->averaging == MAX31856_CONFIG_AVERAGING_16) {
+	else if (data->averaging == THERMOCOUPLE_V2_AVERAGING_16) {
 		cr1 = MAX31856_CR1_AVGSEL_16;
 	}
 	else {
 		return HANDLE_MESSAGE_RESPONSE_EMPTY;
 	}
 
-	if ((MAX31856_CONFIG_TYPE_t)data->thermocouple_type == MAX31856_CONFIG_TYPE_B) {
+	if (data->thermocouple_type == THERMOCOUPLE_V2_TYPE_B) {
 		;
 	}
-	else if ((MAX31856_CONFIG_TYPE_t)data->thermocouple_type == MAX31856_CONFIG_TYPE_E) {
+	else if (data->thermocouple_type == THERMOCOUPLE_V2_TYPE_E) {
 		cr1 |= MAX31856_CR1_TC_TYPE_E;
 	}
-	else if ((MAX31856_CONFIG_TYPE_t)data->thermocouple_type == MAX31856_CONFIG_TYPE_J) {
+	else if (data->thermocouple_type == THERMOCOUPLE_V2_TYPE_J) {
 		cr1 |= MAX31856_CR1_TC_TYPE_J;
 	}
-	else if ((MAX31856_CONFIG_TYPE_t)data->thermocouple_type == MAX31856_CONFIG_TYPE_K) {
+	else if (data->thermocouple_type == THERMOCOUPLE_V2_TYPE_K) {
 		cr1 |= MAX31856_CR1_TC_TYPE_K;
 	}
-	else if ((MAX31856_CONFIG_TYPE_t)data->thermocouple_type == MAX31856_CONFIG_TYPE_N) {
+	else if (data->thermocouple_type == THERMOCOUPLE_V2_TYPE_N) {
 		cr1 |= MAX31856_CR1_TC_TYPE_N;
 	}
-	else if ((MAX31856_CONFIG_TYPE_t)data->thermocouple_type == MAX31856_CONFIG_TYPE_R) {
+	else if (data->thermocouple_type == THERMOCOUPLE_V2_TYPE_R) {
 		cr1 |= MAX31856_CR1_TC_TYPE_R;
 	}
-	else if ((MAX31856_CONFIG_TYPE_t)data->thermocouple_type == MAX31856_CONFIG_TYPE_S) {
+	else if (data->thermocouple_type == THERMOCOUPLE_V2_TYPE_S) {
 		cr1 |= MAX31856_CR1_TC_TYPE_S;
 	}
-	else if ((MAX31856_CONFIG_TYPE_t)data->thermocouple_type == MAX31856_CONFIG_TYPE_T) {
+	else if (data->thermocouple_type == THERMOCOUPLE_V2_TYPE_T) {
 		cr1 |= MAX31856_CR1_TC_TYPE_T;
 	}
-	else if ((MAX31856_CONFIG_TYPE_t)data->thermocouple_type == MAX31856_CONFIG_TYPE_G32) {
+	else if (data->thermocouple_type == THERMOCOUPLE_V2_TYPE_G8) {
 		cr1 |= MAX31856_CR1_TC_TYPE_G8;
 	}
-	else if ((MAX31856_CONFIG_TYPE_t)data->thermocouple_type == MAX31856_CONFIG_TYPE_G32) {
+	else if (data->thermocouple_type == THERMOCOUPLE_V2_TYPE_G32) {
 		cr1 |= MAX31856_CR1_TC_TYPE_G32;
 	}
 	else {
@@ -130,9 +130,9 @@ BootloaderHandleMessageResponse set_configuration(const SetConfiguration *data) 
 	max31856.tx[1] = cr1;
 	max31856_spi_write_register(MAX31856_REG_CR0, 2);
 
-	max31856.config_averaging = (MAX31856_CONFIG_AVERAGING_t)data->averaging;
-	max31856.config_thermocouple_type = (MAX31856_CONFIG_TYPE_t)data->thermocouple_type;
-	max31856.config_filter = (MAX31856_CONFIG_FILTER_t)data->filter;
+	max31856.config_averaging = data->averaging;
+	max31856.config_thermocouple_type = data->thermocouple_type;
+	max31856.config_filter = data->filter;
 
 	max31856.skip_do_update_temperature_turns = SKIP_UPDATE_TEMP_TURNS;
 
@@ -144,9 +144,9 @@ BootloaderHandleMessageResponse get_configuration(const GetConfiguration *data,
 	logd("[+] Thermocouple V2 Bricklet : get_configuration()\n\r");
 
 	response->header.length = sizeof(GetConfiguration_Response);
-	response->averaging = (uint8_t)max31856.config_averaging;
-	response->thermocouple_type = (uint8_t)max31856.config_thermocouple_type;
-	response->filter = (uint8_t)max31856.config_filter;
+	response->averaging = max31856.config_averaging;
+	response->thermocouple_type = max31856.config_thermocouple_type;
+	response->filter = max31856.config_filter;
 
 	return HANDLE_MESSAGE_RESPONSE_NEW_MESSAGE;
 }
