@@ -1,0 +1,19 @@
+Needs["NETLink`"]
+LoadNETAssembly["Tinkerforge",NotebookDirectory[]<>"../../.."]
+
+host="localhost"
+port=4223
+uid="XYZ"(*Change XYZ to the UID of your Thermocouple Bricklet 2.0*)
+
+(*Create IPConnection and device object*)
+ipcon=NETNew["Tinkerforge.IPConnection"]
+t=NETNew["Tinkerforge.BrickletThermocoupleV2",uid,ipcon]
+ipcon@Connect[host,port]
+
+(*Get current temperature*)
+Print["Temperature: "<>ToString[N[Quantity[t@GetTemperature[],"°C/100"]]]]
+
+(*Clean up*)
+ipcon@Disconnect[]
+ReleaseNETObject[t]
+ReleaseNETObject[ipcon]
