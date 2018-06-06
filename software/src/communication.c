@@ -28,19 +28,16 @@
 
 #include "max31856.h"
 
-CallbackValue callback_value_temperature;
+CallbackValue_int32_t callback_value_temperature;
 
 BootloaderHandleMessageResponse handle_message(const void *message, void *response) {
 	switch(tfp_get_fid_from_message(message)) {
 		case FID_GET_TEMPERATURE:
-			return get_callback_value(message, response, &callback_value_temperature);
+			return get_callback_value_int32_t(message, response, &callback_value_temperature);
 		case FID_SET_TEMPERATURE_CALLBACK_CONFIGURATION:
-			return set_callback_value_callback_configuration(message,
-			                                                 &callback_value_temperature);
+			return set_callback_value_callback_configuration_int32_t(message, &callback_value_temperature);
 		case FID_GET_TEMPERATURE_CALLBACK_CONFIGURATION:
-			return get_callback_value_callback_configuration(message,
-			                                                 response,
-			                                                 &callback_value_temperature);
+			return get_callback_value_callback_configuration_int32_t(message, response, &callback_value_temperature);
 		case FID_SET_CONFIGURATION:
 			return set_configuration(message);
 		case FID_GET_CONFIGURATION:
@@ -163,8 +160,8 @@ BootloaderHandleMessageResponse get_error_state(const GetErrorState *data,
 }
 
 bool handle_temperature_callback(void) {
-	return handle_callback_value_callback(&callback_value_temperature,
-		                                    FID_CALLBACK_TEMPERATURE);
+	return handle_callback_value_callback_int32_t(&callback_value_temperature,
+	                                              FID_CALLBACK_TEMPERATURE);
 }
 
 bool handle_error_state_callback(void) {
@@ -212,6 +209,6 @@ void communication_tick(void) {
 }
 
 void communication_init(void) {
-	callback_value_init(&callback_value_temperature, max31856_get_temperature);
+	callback_value_init_int32_t(&callback_value_temperature, max31856_get_temperature);
 	communication_callback_init();
 }
