@@ -6907,7 +6907,7 @@
       (xy 1.301301 2.715081) (xy 1.302426 2.714986)) (layer B.SilkS) (width 0.01))
   )
 
-  (module kicad-libraries:PCC_SMP (layer Vorderseite) (tedit 5A5CC723) (tstamp 55BA4B7C)
+  (module kicad-libraries:PCC_SMP (layer Vorderseite) (tedit 5B1E719E) (tstamp 55BA4B7C)
     (at 178.525 139.925 270)
     (path /55BA042C)
     (fp_text reference J101 (at 0 0.5 270) (layer F.Fab)
@@ -6937,10 +6937,10 @@
       (net 7 "Net-(J101-Pad2)"))
     (pad "" thru_hole circle (at 7.9 -6.75 270) (size 3.2 3.2) (drill 1.77) (layers *.Cu *.Mask F.SilkS))
     (pad "" thru_hole circle (at -7.9 -6.75 270) (size 3.2 3.2) (drill 1.77) (layers *.Cu *.Mask F.SilkS))
-    (model Connectors/PCC-SMP.wrl
-      (at (xyz 0 0.06 0.01))
+    (model Connectors/PCC_SMP_K.wrl
+      (at (xyz 0 0.45 0))
       (scale (xyz 1 1 1))
-      (rotate (xyz 90 180 0))
+      (rotate (xyz 180 180 0))
     )
   )
 
