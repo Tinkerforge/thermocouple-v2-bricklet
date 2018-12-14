@@ -19,7 +19,7 @@ func main() {
 	// Don't use device before ipcon is connected.
 
 	t.RegisterTemperatureCallback(func(temperature int32) {
-		fmt.Printf("Temperature: %d °C\n", float64(temperature)/100.0)
+		fmt.Printf("Temperature: %f °C\n", float64(temperature)/100.0)
 	})
 
 	// Configure threshold for temperature "greater than 30 °C"
