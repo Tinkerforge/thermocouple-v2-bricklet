@@ -1,8 +1,6 @@
-use std::{io, error::Error};
+use std::{error::Error, io};
 
-use tinkerforge::{ip_connection::IpConnection, 
-                  thermocouple_v2_bricklet::*};
-
+use tinkerforge::{ip_connection::IpConnection, thermocouple_v2_bricklet::*};
 
 const HOST: &str = "localhost";
 const PORT: u16 = 4223;
@@ -13,11 +11,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     let t = ThermocoupleV2Bricklet::new(UID, &ipcon); // Create device object.
 
     ipcon.connect((HOST, PORT)).recv()??; // Connect to brickd.
-    // Don't use device before ipcon is connected.
+                                          // Don't use device before ipcon is connected.
 
-		// Get current temperature.
-let temperature = t.get_temperature().recv()?;
-		println!("Temperature: {} °C", temperature as f32 /100.0);
+    // Get current temperature.
+    let temperature = t.get_temperature().recv()?;
+    println!("Temperature: {} °C", temperature as f32 / 100.0);
 
     println!("Press enter to exit.");
     let mut _input = String::new();
