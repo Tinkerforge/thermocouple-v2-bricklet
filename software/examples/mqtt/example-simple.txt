@@ -3,4 +3,4 @@
 setup:
 	# Get current temperature
 	subscribe to tinkerforge/response/thermocouple_v2_bricklet/XYZ/get_temperature
-	publish '' to tinkerforge/request/thermocouple_v2_bricklet/XYZ/get_temperature 
+	publish '' to tinkerforge/request/thermocouple_v2_bricklet/XYZ/get_temperature
