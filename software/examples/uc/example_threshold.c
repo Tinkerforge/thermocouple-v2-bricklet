@@ -1,13 +1,9 @@
-
-
 #include "bindings/hal_common.h"
 #include "bindings/bricklet_thermocouple_v2.h"
 
 #define UID "XYZ" // Change XYZ to the UID of your Thermocouple Bricklet 2.0
 
 void check(int rc, const char* msg);
-
-
 
 // Callback function for temperature callback
 void temperature_handler(TF_ThermocoupleV2 *device, int32_t temperature,
@@ -16,7 +12,6 @@ void temperature_handler(TF_ThermocoupleV2 *device, int32_t temperature,
 
 	tf_hal_printf("Temperature: %d 1/%d °C\n", temperature, 100.0);
 }
-
 
 TF_ThermocoupleV2 t;
 
