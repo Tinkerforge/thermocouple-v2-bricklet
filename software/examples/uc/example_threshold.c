@@ -5,15 +5,19 @@
 
 void check(int rc, const char* msg);
 
+void example_setup(TF_HalContext *hal);
+void example_loop(TF_HalContext *hal);
+
+
 // Callback function for temperature callback
-void temperature_handler(TF_ThermocoupleV2 *device, int32_t temperature,
-                         void *user_data) {
+static void temperature_handler(TF_ThermocoupleV2 *device, int32_t temperature,
+                                void *user_data) {
 	(void)device; (void)user_data; // avoid unused parameter warning
 
 	tf_hal_printf("Temperature: %d 1/%d °C\n", temperature, 100.0);
 }
 
-TF_ThermocoupleV2 t;
+static TF_ThermocoupleV2 t;
 
 void example_setup(TF_HalContext *hal) {
 	// Create device object
