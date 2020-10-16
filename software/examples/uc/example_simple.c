@@ -23,7 +23,7 @@ void example_setup(TF_HalContext *hal) {
 	int32_t temperature;
 	check(tf_thermocouple_v2_get_temperature(&t, &temperature), "get temperature");
 
-	tf_hal_printf("Temperature: %d 1/%d °C\n", temperature, 100.0);
+	tf_hal_printf("Temperature: %d 1/%d °C\n", temperature, 100);
 }
 
 void example_loop(TF_HalContext *hal) {
