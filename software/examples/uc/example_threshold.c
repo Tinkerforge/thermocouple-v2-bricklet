@@ -9,8 +9,8 @@
 
 void check(int rc, const char* msg);
 
-void example_setup(TF_HalContext *hal);
-void example_loop(TF_HalContext *hal);
+void example_setup(TF_HAL *hal);
+void example_loop(TF_HAL *hal);
 
 
 // Callback function for temperature callback
@@ -23,7 +23,7 @@ static void temperature_handler(TF_ThermocoupleV2 *device, int32_t temperature,
 
 static TF_ThermocoupleV2 t;
 
-void example_setup(TF_HalContext *hal) {
+void example_setup(TF_HAL *hal) {
 	// Create device object
 	check(tf_thermocouple_v2_create(&t, UID, hal), "create device object");
 
@@ -37,7 +37,7 @@ void example_setup(TF_HalContext *hal) {
 	tf_thermocouple_v2_set_temperature_callback_configuration(&t, 10000, false, '>', 30*100, 0);
 }
 
-void example_loop(TF_HalContext *hal) {
+void example_loop(TF_HAL *hal) {
 	// Poll for callbacks
 	tf_hal_callback_tick(hal, 0);
 }
