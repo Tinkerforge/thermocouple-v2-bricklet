@@ -1,17 +1,13 @@
 // This example is not self-contained.
-// It requres usage of the example driver specific to your platform.
+// It requires usage of the example driver specific to your platform.
 // See the HAL documentation.
 
-#include "bindings/hal_common.h"
-#include "bindings/bricklet_thermocouple_v2.h"
+#include "src/bindings/hal_common.h"
+#include "src/bindings/bricklet_thermocouple_v2.h"
 
-#define UID "XYZ" // Change XYZ to the UID of your Thermocouple Bricklet 2.0
-
-void check(int rc, const char* msg);
-
+void check(int rc, const char *msg);
 void example_setup(TF_HAL *hal);
 void example_loop(TF_HAL *hal);
-
 
 // Callback function for temperature callback
 static void temperature_handler(TF_ThermocoupleV2 *device, int32_t temperature,
@@ -25,7 +21,7 @@ static TF_ThermocoupleV2 t;
 
 void example_setup(TF_HAL *hal) {
 	// Create device object
-	check(tf_thermocouple_v2_create(&t, UID, hal), "create device object");
+	check(tf_thermocouple_v2_create(&t, NULL, hal), "create device object");
 
 	// Register temperature callback to function temperature_handler
 	tf_thermocouple_v2_register_temperature_callback(&t,
